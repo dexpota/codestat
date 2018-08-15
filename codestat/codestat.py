@@ -4,6 +4,7 @@ from tempfile import mkdtemp
 from shutil import rmtree
 from subprocess import check_output
 from operator import getitem
+import subprocess
 import os
 import re
 import json
@@ -13,13 +14,14 @@ import os.path
 
 json_shema = "https://gist.githubusercontent.com/dexpota/5ef2064b4bc4c09b77811e06cfebd0ff/raw/schema.json"
 
+
 def has_extension(filename, extensions):
     return filename.endswith(tuple(extensions))
 
 
 def js_libraries(filename):
-    jquery = re.match("jquery.*\.js", filename)
-    bootstrap = re.match("bootstrap.*\.js", filename)
+    jquery = re.match(r"jquery.*\.js", filename)
+    bootstrap = re.match(r"bootstrap.*\.js", filename)
     # angular = re.match("angular.*\.js", filename)
     return not(jquery or bootstrap)
 
@@ -27,7 +29,7 @@ def js_libraries(filename):
 def and_function(foo, bar):
     def fuu(filename):
         if bar(filename) and foo(filename):
-            print "js:", filename
+            print("js:", filename)
         return foo(filename) and bar(filename)
     return fuu
 
@@ -56,21 +58,21 @@ def python_modules(filename):
         lines = fp.readlines()
         aaa = "".join(lines)
         matches = []
-        matches += re.findall("^\s*import\s+([\.\w]+)\s*$", aaa, re.MULTILINE)
-        matches += re.findall("^\s*from\s+([\.\w]+)\s+import\s+\w+\s*$", aaa, re.MULTILINE)
+        matches += re.findall(r"^\s*import\s+([\.\w]+)\s*$", aaa, re.MULTILINE)
+        matches += re.findall(r"^\s*from\s+([\.\w]+)\s+import\s+\w+\s*$", aaa, re.MULTILINE)
     return matches
 
 
 def pip_search_module(module):
     try:
-        import xmlrpclib
+        import xmlrpc.client
     except ImportError:
         import xmlrpc.client as xmlrpclib
 
-    client = xmlrpclib.ServerProxy('https://pypi.python.org/pypi')
+    client = xmlrpc.client.ServerProxy('https://pypi.python.org/pypi')
     # get a list of package names
     packages = client.list_packages()
-    print "Module {} found: {}".format(module, module in packages)
+    print("Module {} found: {}".format(module, module in packages))
 
 
 def python_statistics(filename):
@@ -109,7 +111,7 @@ def build_statistics(root, path):
         full_directory = os.path.join(root, "./" + path)
         filename = os.path.basename(full_directory)
         current_directory = os.path.dirname(full_directory)
-        for l, obj in extensions_by_languages.iteritems():
+        for l, obj in extensions_by_languages.items():
             if obj["filter"](filename):
                 language_stats = {
                     "language": l,
@@ -127,7 +129,7 @@ def build_statistics(root, path):
             dirnames.remove(".git")
 
         for filename in filenames:
-            for l, obj in extensions_by_languages.iteritems():
+            for l, obj in extensions_by_languages.items():
                 if obj["filter"](filename):
                     language_stats = {
                         "language": l,
@@ -159,23 +161,23 @@ extensions_by_languages = {
         "statistics": count_lines
     },
 
-    "C":{
+    "C": {
         "filter": partial(has_extension, extensions=["c", "h"]),
         "statistics": count_lines
     },
 
-    "Python":{
+    "Python": {
         "filter": partial(has_extension, extensions=["py"]),
         "statistics": python_statistics,
         "aggregation": python_aggregate
     },
 
-    "Java":{
+    "Java": {
         "filter": partial(has_extension, extensions=["java"]),
         "statistics": count_lines
     },
 
-    "CMake":{
+    "CMake": {
         "filter": lambda filename: filename == "CMakeLists.txt",
         "statistics": count_lines
     }
@@ -191,9 +193,10 @@ style_by_languages = {
     "CMake": {"background-color": "#ffffcc", "border-bottom-color": "#ffff00"},
 }
 
-repositories = []
 
-if __name__ == "__main__":
+def main():
+    repositories = []
+
     parser = ArgumentParser()
     parser.add_argument("statistics")
     parser.add_argument("--format", choices=["json"], default="json")
@@ -215,7 +218,7 @@ if __name__ == "__main__":
             repositories = []
             with open(args.yaml) as input_file:
                 input_repositories = yaml.load(input_file)
-                for key, value in input_repositories.iteritems():
+                for key, value in input_repositories.items():
                     if "repository" in value:
                         repositories.append(value["repository"])
         except Exception:
@@ -234,7 +237,7 @@ if __name__ == "__main__":
     for repository_path in repositories:
         pathname = mkdtemp()
 
-        match = re.match("(((git|ssh|http(s)?)|(git@[\w\.]+))(:(//)?)([\w\.@\:/\-~]+)(\.git)(/)?):?(.*[^/]*)?", repository_path)
+        match = re.match(r"(((git|ssh|http(s)?)|(git@[\w\.]+))(:(//)?)([\w\.@\:/\-~]+)(\.git)(/)?):?(.*[^/]*)?", repository_path)
         if match:
             repository = match.groups()[0]
             local_directory = match.groups()[-1]
@@ -259,7 +262,7 @@ if __name__ == "__main__":
                 }
 
                 aggregations = []
-                for l, obj in extensions_by_languages.iteritems():
+                for l, obj in extensions_by_languages.items():
                     filtered = filter(lambda item: item["language"] == l, repository_statistics["statistics"])
                     if "aggregation" in obj and len(filtered):
                         aggregations.append(obj["aggregation"](repository_statistics["statistics"]))
@@ -277,7 +280,7 @@ if __name__ == "__main__":
             }
 
             aggregations = []
-            for l, obj in extensions_by_languages.iteritems():
+            for l, obj in extensions_by_languages.items():
                 filtered = filter(lambda item: item["language"] == l, repository_statistics["statistics"])
                 if "aggregation" in obj and len(filtered):
                     aggregations.append(obj["aggregation"](repository_statistics["statistics"]))
@@ -292,12 +295,12 @@ if __name__ == "__main__":
     if args.directories:
         for directory in args.directories:
             if is_git_directory(directory):
-                ls_remote_output = check_output(["git", "ls-remote", directory, "HEAD"])
+                ls_remote_output = subprocess.getoutput("git ls-remote " + directory + " HEAD")
                 head_hash = regex.match(ls_remote_output).group(0)
 
-                remote = check_output(["git", "config", "--get", "remote.origin.url"]).lstrip().rstrip()
+                remote = subprocess.getoutput("git config --get remote.origin.url").lstrip().rstrip()
                 try:
-                    index = map(lambda item: getitem(item, "repository"), repositories_statistics).index(remote)
+                    index = list(map(lambda item: getitem(item, "repository"), repositories_statistics)).index(remote)
 
                     if force or repositories_statistics[index]["hashcode"] != head_hash:
                         repository_statistics = {
@@ -307,7 +310,7 @@ if __name__ == "__main__":
                         }
 
                         aggregations = []
-                        for l, obj in extensions_by_languages.iteritems():
+                        for l, obj in extensions_by_languages.items():
                             filtered = filter(lambda item: item["language"] == l, repository_statistics["statistics"])
                             if "aggregation" in obj and len(filtered):
                                 aggregations.append(obj["aggregation"](repository_statistics["statistics"]))
@@ -324,8 +327,8 @@ if __name__ == "__main__":
                     }
 
                     aggregations = []
-                    for l, obj in extensions_by_languages.iteritems():
-                        filtered = filter(lambda item: item["language"] == l, repository_statistics["statistics"])
+                    for l, obj in list(extensions_by_languages.items()):
+                        filtered = list(filter(lambda item: item["language"] == l, repository_statistics["statistics"]))
                         if "aggregation" in obj and len(filtered):
                             aggregations.append(obj["aggregation"](repository_statistics["statistics"]))
 
@@ -334,7 +337,7 @@ if __name__ == "__main__":
 
                     repositories_statistics.append(repository_statistics)
 
-    global_statistics = dict(zip(extensions_by_languages.keys(), [{}]*len(extensions_by_languages)))
+    global_statistics = dict(list(zip(list(extensions_by_languages.keys()), [{}]*len(extensions_by_languages))))
 
     #total_count = 0
     #for repository_statistics in repositories_statistics:
@@ -362,9 +365,12 @@ if __name__ == "__main__":
         json.dump(repositories_statistics, outfile, indent=4, sort_keys=True)
 
     if args.validate:
-        import urllib2
+        import urllib.request, urllib.error, urllib.parse
         import jsonschema
-        response = urllib2.urlopen(json_shema)
+        response = urllib.request.urlopen(json_shema)
         schema = response.read()
         jsonschema.validate(repositories_statistics, json.loads(schema))
 
+
+if __name__ == "__main__":
+    main()
