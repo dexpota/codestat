@@ -19,6 +19,7 @@ setuptools.setup(
         "Intended Audience :: Developers",
         "Programming Language :: Python :: 3"
     ],
+    install_requires=["pyyaml"],
     url="https://github.com/dexpota/codestat",
     packages=setuptools.find_packages(),
 )
