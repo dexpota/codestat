@@ -371,6 +371,3 @@ def main():
         schema = response.read()
         jsonschema.validate(repositories_statistics, json.loads(schema))
 
-
-if __name__ == "__main__":
-    main()
