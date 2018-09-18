@@ -1,11 +1,12 @@
 import setuptools
+import codestat
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="codestat",
-    version="0.1a0",
+    version=codestat.__version__,
     author="Fabrizio Destro",
     author_email="destro.fabrizio@gmail.com",
     entry_points={
