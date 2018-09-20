@@ -195,24 +195,31 @@ style_by_languages = {
 
 
 def main():
-    repositories = []
-
     parser = ArgumentParser()
-    parser.add_argument("statistics")
+    parser.add_argument("statistics", help="Statistics' filename.")
     parser.add_argument("--format", choices=["json"], default="json")
     parser.add_argument("--force", "-f", action="store_true", default=False)
     parser.add_argument("--validate", action="store_true", default=False)
-    parser.add_argument("--directories", nargs="+", type=str)
-    parser.add_argument("--repositories", nargs="+", type=str)
+    parser.add_argument("--directories", nargs="+", type=str, help="List of local directories.")
+    parser.add_argument("--repositories", nargs="+", type=str, help="List of repositories' URIs.")
     parser.add_argument("--yaml", "--yml")
     args = parser.parse_args()
 
+    repositories = []
+
+    # check we have some input to process
     if not args.directories and not args.repositories and not args.yaml:
         parser.error("at least one of --directories, --repositories, --yaml required")
 
+    # append repositories' urls
     if args.repositories:
         repositories += args.repositories
 
+    # REVIEW this section of code
+    #
+    # it seems that load the repositories from a yaml file, but why this functionality?
+    # Maybe because it was used to read from a yaml file I used for my personal website.
+    # It overwrites the current list of repositories.
     if args.yaml:
         try:
             repositories = []
@@ -226,6 +233,7 @@ def main():
 
     force = args.force
 
+    # if file exists it loads the current statistics and save it in repositories_statistics
     statistics_filename = args.statistics
     try:
         with open(statistics_filename, 'r') as outfile:
@@ -233,10 +241,13 @@ def main():
     except IOError as error:
         repositories_statistics = []
 
+    # TODO move to a function
+    # first process all repositories'uris
     regex = re.compile("([0-9a-fA-F]+)")
     for repository_path in repositories:
         pathname = mkdtemp()
 
+        # parse repository uri
         match = re.match(r"(((git|ssh|http(s)?)|(git@[\w\.]+))(:(//)?)([\w\.@\:/\-~]+)(\.git)(/)?):?(.*[^/]*)?", repository_path)
         if match:
             repository = match.groups()[0]
@@ -247,6 +258,8 @@ def main():
         else:
             continue
 
+        # extract remote hash using git, try another method
+        # the hash is used to check if statistics are up-to-date
         ls_remote_output = check_output(["git", "ls-remote", repository, "HEAD"])
         head_hash = regex.match(ls_remote_output).group(0)
 
