@@ -258,25 +258,36 @@ def main():
         else:
             continue
 
-        # extract remote hash using git, try another method
+        # extract remote hash using git, TODO find out if there is another way
         # the hash is used to check if statistics are up-to-date
         ls_remote_output = check_output(["git", "ls-remote", repository, "HEAD"])
         head_hash = regex.match(ls_remote_output).group(0)
 
+        # TODO you are using a try catch block like an if, ugh ugly
         try:
+            # search for the current repository between the loaded statistics.
             index = map(lambda item: getitem(item, "repository"), repositories_statistics).index(repository)
 
             if force or repositories_statistics[index]["hashcode"] != head_hash:
+                # if we want to force the update or the data are not updated we go on
+
+                # clone the repository TODO find out if there is another way
                 check_output(["git", "clone", repository, "."], cwd=pathname)
+
+                # build the repository statistics object
                 repository_statistics = {
                     "repository": repository,
                     "statistics": build_statistics(pathname, local_directory),
                     "hashcode": head_hash
                 }
 
+                # build the aggregated statistics
                 aggregations = []
+                # for each type of languages we have different filters and functions
                 for l, obj in extensions_by_languages.items():
+                    # we filter all files for this language
                     filtered = filter(lambda item: item["language"] == l, repository_statistics["statistics"])
+                    # if we got an aggregation function we use it and generate the aggregated statistics
                     if "aggregation" in obj and len(filtered):
                         aggregations.append(obj["aggregation"](repository_statistics["statistics"]))
 
@@ -285,6 +296,8 @@ def main():
 
                 repositories_statistics[index] = repository_statistics
         except ValueError as error:
+            # if we don't have already computed statistics we build new ones.
+
             check_output(["git", "clone", repository, "."], cwd=pathname)
             repository_statistics = {
                 "repository": repository,
@@ -303,15 +316,20 @@ def main():
 
             repositories_statistics.append(repository_statistics)
 
+        # cleanup
         rmtree(pathname)
 
     if args.directories:
+        # if we got local directories, this logic is pretty much the same as the previous one
         for directory in args.directories:
             if is_git_directory(directory):
+                # find out remote hash code, TODO find a better way
                 ls_remote_output = subprocess.getoutput("git ls-remote " + directory + " HEAD")
                 head_hash = regex.match(ls_remote_output).group(0)
 
+                # get remote url, TODO find a better way
                 remote = subprocess.getoutput("git config --get remote.origin.url").lstrip().rstrip()
+                # TODO you are using a try catch block like an if, ugh ugly
                 try:
                     index = list(map(lambda item: getitem(item, "repository"), repositories_statistics)).index(remote)
 
@@ -358,6 +376,7 @@ def main():
     #        global_statistics[language] += count
     #        total_count += count
 
+    # This was just to get a webpage from this statistics, we want this function but integrated in a better way
     from string import Template
     style = "<style> " \
             ".language-box{ " \
@@ -374,9 +393,11 @@ def main():
     #                       background_color=style_by_languages[language]["background-color"],
     #                       border_bottom_color=style_by_languages[language]["border-bottom-color"])
 
+    # write out statistics
     with open(statistics_filename, 'w') as outfile:
         json.dump(repositories_statistics, outfile, indent=4, sort_keys=True)
 
+    # validate statistics using json schema.
     if args.validate:
         import urllib.request, urllib.error, urllib.parse
         import jsonschema
