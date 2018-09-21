@@ -43,6 +43,9 @@ def mapcount(filename):
         while readline():
             lines += 1
         return lines
+    except PermissionError:
+        # is this right?
+        return 0
     except ValueError:
         return 0
 # TODO you are using a try catch block like an if, ugh ugly
@@ -263,11 +266,15 @@ def main():
         ls_remote_output = check_output(["git", "ls-remote", repository, "HEAD"])
         head_hash = regex.match(ls_remote_output).group(0)
 
-        # TODO you are using a try catch block like an if, ugh ugly
+        # this is because of how index works
+        # TODO move to function
         try:
             # search for the current repository between the loaded statistics.
             index = map(lambda item: getitem(item, "repository"), repositories_statistics).index(repository)
+        except ValueError as error:
+            index = None
 
+        if index:
             if force or repositories_statistics[index]["hashcode"] != head_hash:
                 # if we want to force the update or the data are not updated we go on
 
@@ -295,7 +302,7 @@ def main():
                     repository_statistics["aggregation"] = aggregations
 
                 repositories_statistics[index] = repository_statistics
-        except ValueError as error:
+        else:
             # if we don't have already computed statistics we build new ones.
 
             check_output(["git", "clone", repository, "."], cwd=pathname)
