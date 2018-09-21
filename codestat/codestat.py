@@ -45,7 +45,7 @@ def mapcount(filename):
         return lines
     except ValueError:
         return 0
-
+# TODO you are using a try catch block like an if, ugh ugly
 
 def count_lines(filename):
     return {"lines": mapcount(filename)}
