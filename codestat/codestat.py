@@ -202,7 +202,7 @@ def get_index(repositories_statistics, repository):
     # this is because of how index works
     try:
         # search for the current repository between the loaded statistics.
-        index = list(map(partial(getitem, "repository"), repositories_statistics)).index(repository)
+        index = list(map(lambda item: item["repository"], repositories_statistics)).index(repository)
     except ValueError as error:
         index = None
     return index
