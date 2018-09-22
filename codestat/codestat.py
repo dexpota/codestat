@@ -4,6 +4,7 @@ from tempfile import mkdtemp
 from shutil import rmtree
 from subprocess import check_output
 from operator import getitem
+from functools import partial
 import subprocess
 import os
 import re
@@ -48,7 +49,7 @@ def mapcount(filename):
         return 0
     except ValueError:
         return 0
-# TODO you are using a try catch block like an if, ugh ugly
+
 
 def count_lines(filename):
     return {"lines": mapcount(filename)}
@@ -197,6 +198,16 @@ style_by_languages = {
 }
 
 
+def get_index(repositories_statistics, repository):
+    # this is because of how index works
+    try:
+        # search for the current repository between the loaded statistics.
+        index = map(partial(getitem, "repository"), repositories_statistics).index(repository)
+    except ValueError as error:
+        index = None
+    return index
+
+
 def main():
     parser = ArgumentParser()
     parser.add_argument("statistics", help="Statistics' filename.")
@@ -266,13 +277,7 @@ def main():
         ls_remote_output = check_output(["git", "ls-remote", repository, "HEAD"])
         head_hash = regex.match(ls_remote_output).group(0)
 
-        # this is because of how index works
-        # TODO move to function
-        try:
-            # search for the current repository between the loaded statistics.
-            index = map(lambda item: getitem(item, "repository"), repositories_statistics).index(repository)
-        except ValueError as error:
-            index = None
+        index = get_index(repositories_statistics, repository)
 
         if index:
             if force or repositories_statistics[index]["hashcode"] != head_hash:
@@ -336,10 +341,10 @@ def main():
 
                 # get remote url, TODO find a better way
                 remote = subprocess.getoutput("git config --get remote.origin.url").lstrip().rstrip()
-                # TODO you are using a try catch block like an if, ugh ugly
-                try:
-                    index = list(map(lambda item: getitem(item, "repository"), repositories_statistics)).index(remote)
 
+                index = get_index(repositories_statistics, remote)
+
+                if index:
                     if force or repositories_statistics[index]["hashcode"] != head_hash:
                         repository_statistics = {
                             "repository": remote,
@@ -357,7 +362,7 @@ def main():
                             repository_statistics["aggregation"] = aggregations
 
                         repositories_statistics[index] = repository_statistics
-                except ValueError as error:
+                else:
                     repository_statistics = {
                         "repository": remote,
                         "statistics": build_statistics(directory, "."),
