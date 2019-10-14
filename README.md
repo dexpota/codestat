@@ -5,7 +5,7 @@
 
 # codestat
 
-> Build and explore statistics about your codebase.
+> Measure your code and build statistics
 
 [![Build Status][travis-badge]][travis]
 [![MIT License][license-badge]][license]
